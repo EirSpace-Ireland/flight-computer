@@ -60,39 +60,47 @@ bool mpu6050::read_accel_axis(uint8_t _axis)
 
 bool mpu6050::read_accel()
 {
-    uint8_t data[6] {0};
-    /***
-     * Remember: read fills data buffer back to front (to allow for uintXX_t filling)
-     * 0 zl
-     * 1 zh
-     * 2 yl
-     * 3 yh
-     * 4 xl
-     * 5 xh
-     */
-    if(!mpu6050::read(REG_ACCEL_XOUT_H, data, 6))
-    {
-        return false;
-    }
-    accel[0] = (data[1] << 8) | data[0];
-    accel[1] = (data[3] << 8) | data[2];
-    accel[2] = (data[5] << 8) | data[4];
+    // todo: fix this to just use mpu6050::read
+    mpu6050::read_register_data16(REG_ACCEL_XOUT_H, reinterpret_cast<uint16_t*>(&accel[0]));
+    mpu6050::read_register_data16(REG_ACCEL_YOUT_H, reinterpret_cast<uint16_t*>(&accel[1]));
+    mpu6050::read_register_data16(REG_ACCEL_ZOUT_H, reinterpret_cast<uint16_t*>(&accel[2]));
+    //uint8_t data[6] {0};
+    ///***
+    // * Remember: read fills data buffer back to front (to allow for uintXX_t filling)
+    // * 0 zl
+    // * 1 zh
+    // * 2 yl
+    // * 3 yh
+    // * 4 xl
+    // * 5 xh
+    // */
+    //if(!mpu6050::read(REG_ACCEL_XOUT_H, data, 6))
+    //{
+    //    return false;
+    //}
+    //accel[0] = (data[1] << 8) | data[0];
+    //accel[1] = (data[3] << 8) | data[2];
+    //accel[2] = (data[5] << 8) | data[4];
     return true;
     //return read_sensor(MPU_ACCEL_ID);
 }
 
 bool mpu6050::read_gyro()
 {
-    uint8_t data[6] {0};
-    if(!mpu6050::read(REG_ACCEL_XOUT_H, data, 6))
-    {
-        return false;
-    }
-    gyro[0] = (data[1] << 8) | data[0];
-    gyro[1] = (data[3] << 8) | data[2];
-    gyro[2] = (data[5] << 8) | data[4];
+    // todo: fix this to just use mpu6050::read
+    mpu6050::read_register_data16(REG_GYRO_XOUT_H, reinterpret_cast<uint16_t*>(&gyro[0]));
+    mpu6050::read_register_data16(REG_GYRO_YOUT_H, reinterpret_cast<uint16_t*>(&gyro[1]));
+    mpu6050::read_register_data16(REG_GYRO_ZOUT_H, reinterpret_cast<uint16_t*>(&gyro[2]));
+    // uint8_t data[6] {0};
+    // if(!mpu6050::read(REG_ACCEL_XOUT_H, data, 6))
+    // {
+    //     return false;
+    // }
+    // gyro[0] = (data[1] << 8) | data[0];
+    // gyro[1] = (data[3] << 8) | data[2];
+    // gyro[2] = (data[5] << 8) | data[4];
     return true;
-    return read_sensor(MPU_GYRO_ID);
+    //return read_sensor(MPU_GYRO_ID);
 }
 
 bool mpu6050::read_sensor_axis(uint8_t _sensor, uint8_t _axis)
@@ -237,6 +245,7 @@ bool mpu6050::read(uint8_t _reg, uint8_t *_data, size_t _len)
 
     if (Wire.write(_reg) != 1)
     {
+        Serial.println("I2C write err mpu6050::read");
         return false;
     }
 
@@ -249,6 +258,7 @@ bool mpu6050::read(uint8_t _reg, uint8_t *_data, size_t _len)
 
     if (Wire.requestFrom(this->addr, _len) != _len)
     {
+        Serial.println("I2C read err. mpu6050::read");
         return false;
     }
 
@@ -278,14 +288,20 @@ bool mpu6050::read_register_data32(uint8_t _reg, uint32_t *_data)
 
 bool mpu6050::read_temp()
 {
-    return read_register_data16(REG_TEMP_OUT_H, reinterpret_cast<uint16_t*>(&temp));
+    if (!read_register_data16(REG_TEMP_OUT_H, reinterpret_cast<uint16_t*>(&temp)))
+    {
+        Serial.println("read temp err");
+        return false;
+    }
+
+    return true;
 }
 
 bool mpu6050::read_motion()
 {
     if (read_accel() == false || read_gyro() == false)
     {
-        // Serial.println(F("read_motion err"));
+        Serial.println(F("read_motion err"));
         return false;
     }
     return true;
@@ -295,7 +311,7 @@ bool mpu6050::read_all()
 {
     if (read_accel() == false || read_gyro() == false || read_temp() == false)
     {
-        // Serial.println(F("read_all err"));
+        Serial.println(F("read_all err"));
         return false;
     }
     return true;
