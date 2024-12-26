@@ -80,5 +80,12 @@ private:
     bool write_sensor_scale(uint8_t _sensor, IMU_SCALE _scale);
     bool read_sensor_axis(uint8_t _sensor, uint8_t _axis);
     bool read_sensor(uint8_t _sensor);
+
+    bool write(uint8_t _reg, uint8_t* _data, size_t _len);
+    bool write_register(uint8_t _reg, uint8_t _data);
+    bool read(uint8_t _reg, uint8_t* _data, size_t _len);
+    bool read_register_data8(uint8_t _reg, uint8_t* _data);
+    bool read_register_data16(uint8_t _reg, uint16_t* _data);
+    bool read_register_data32(uint8_t _reg, uint32_t* _data);
 };
 #endif // EIR_MPU6050

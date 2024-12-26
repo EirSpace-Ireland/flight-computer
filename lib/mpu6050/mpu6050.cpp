@@ -21,22 +21,13 @@ mpu6050::~mpu6050()
 bool mpu6050::init()
 {
     // Validate whoami register
-    Wire.beginTransmission(addr);
-    Wire.write(REG_WHO_AM_I);
-    if (Wire.endTransmission() != 0)
+    uint8_t result = 0;
+    if (!read_register_data8(REG_WHO_AM_I, &result))
     {
-        // Serial.println(F("mpu6050 init err"));
         return false;
     }
 
-    if (Wire.requestFrom(addr, (uint8_t)1) != 1)
-    {
-        // Serial.println(F("mpu6050 init err"));
-        return false;
-    }
-
-    uint8_t res = Wire.read();
-    if (res != MPU_ADDR_0)
+    if (result != MPU_ADDR_0)
     {
         // Serial.println(F("whoami err"));
         return false;
@@ -47,25 +38,18 @@ bool mpu6050::init()
 
     // todo extract
     // Reset MPU
-    Wire.beginTransmission(addr);
-    Wire.write(REG_PWR_MGMT_1);
-    Wire.write(1 << 7);
-    if (Wire.endTransmission() != 0)
+    if (!write_register(REG_PWR_MGMT_1, (1 << 7)))
     {
-        // Serial.println(F("mpu6050 init err"));
         return false;
     }
     delay(100);
 
     // Turn on MPU
-    Wire.beginTransmission(addr);
-    Wire.write(REG_PWR_MGMT_1);
-    Wire.write(0);
-    if (Wire.endTransmission() != 0)
+    if (!write_register(REG_PWR_MGMT_1, 0))
     {
-        // Serial.println(F("mpu6050 init err"));
         return false;
     }
+
     return true;
 }
 
@@ -76,11 +60,38 @@ bool mpu6050::read_accel_axis(uint8_t _axis)
 
 bool mpu6050::read_accel()
 {
-    return read_sensor(MPU_ACCEL_ID);
+    uint8_t data[6] {0};
+    /***
+     * Remember: read fills data buffer back to front (to allow for uintXX_t filling)
+     * 0 zl
+     * 1 zh
+     * 2 yl
+     * 3 yh
+     * 4 xl
+     * 5 xh
+     */
+    if(!mpu6050::read(REG_ACCEL_XOUT_H, data, 6))
+    {
+        return false;
+    }
+    accel[0] = (data[1] << 8) | data[0];
+    accel[1] = (data[3] << 8) | data[2];
+    accel[2] = (data[5] << 8) | data[4];
+    return true;
+    //return read_sensor(MPU_ACCEL_ID);
 }
 
 bool mpu6050::read_gyro()
 {
+    uint8_t data[6] {0};
+    if(!mpu6050::read(REG_ACCEL_XOUT_H, data, 6))
+    {
+        return false;
+    }
+    gyro[0] = (data[1] << 8) | data[0];
+    gyro[1] = (data[3] << 8) | data[2];
+    gyro[2] = (data[5] << 8) | data[4];
+    return true;
     return read_sensor(MPU_GYRO_ID);
 }
 
@@ -128,7 +139,7 @@ bool mpu6050::read_sensor_axis(uint8_t _sensor, uint8_t _axis)
         break;
 
     default:
-        Serial.println("INVALED AXIS");
+        Serial.println("INVALID AXIS");
         return false;
         break;
     }
@@ -175,22 +186,99 @@ bool mpu6050::read_sensor(uint8_t _sensor)
     return true;
 }
 
-bool mpu6050::read_temp()
+bool mpu6050::write(uint8_t _reg, uint8_t *_data, size_t _len)
 {
-    Wire.beginTransmission(addr);
-    Wire.write(REG_TEMP_OUT_H);
+    Wire.beginTransmission(this->addr);
+    if (Wire.write(_reg) != 1)
+    {
+        return false;
+    }
+
+    // Amount of data written should match what we expect
+    if (Wire.write(_data, _len) != _len)
+    {
+        Wire.endTransmission();
+        return false;
+    }
+
     if (Wire.endTransmission() != 0)
     {
-        //Serial.println(F("read_temp err"));
         return false;
     }
-    if (Wire.requestFrom(addr, (uint8_t)2) != 2)
-    {
-        //Serial.println(F("read_temp err"));
-        return false;
-    }
-    temp = Wire.read() << 8 | Wire.read();
+
     return true;
+}
+
+bool mpu6050::write_register(uint8_t _reg, uint8_t _data)
+{
+    Wire.beginTransmission(this->addr);
+
+    if (Wire.write(_reg) != 1)
+    {
+        return false;
+    }
+
+    if (Wire.write(_data) != 1)
+    {
+        return false;
+    }
+
+    if (Wire.endTransmission() != 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool mpu6050::read(uint8_t _reg, uint8_t *_data, size_t _len)
+{
+    Wire.beginTransmission(this->addr);
+
+    if (Wire.write(_reg) != 1)
+    {
+        return false;
+    }
+
+    Wire.endTransmission();
+
+    while (Wire.available())
+    {
+        Wire.read();
+    }
+
+    if (Wire.requestFrom(this->addr, _len) != _len)
+    {
+        return false;
+    }
+
+    // MSB first
+    for (size_t i = (_len - 1); i >= 0 && i != SIZE_MAX; i--)
+    {
+        _data[i] = Wire.read();
+    }
+
+    return true;
+}
+
+bool mpu6050::read_register_data8(uint8_t _reg, uint8_t *_data)
+{
+    return mpu6050::read(_reg, _data, 1);
+}
+
+bool mpu6050::read_register_data16(uint8_t _reg, uint16_t *_data)
+{
+    return mpu6050::read(_reg, reinterpret_cast<uint8_t*>(_data), 2);
+}
+
+bool mpu6050::read_register_data32(uint8_t _reg, uint32_t *_data)
+{
+    return mpu6050::read(_reg, reinterpret_cast<uint8_t*>(_data), 4);
+}
+
+bool mpu6050::read_temp()
+{
+    return read_register_data16(REG_TEMP_OUT_H, reinterpret_cast<uint16_t*>(&temp));
 }
 
 bool mpu6050::read_motion()
