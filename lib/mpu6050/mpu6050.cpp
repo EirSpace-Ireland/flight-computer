@@ -141,11 +141,6 @@ bool mpu6050::read_sensor(SENSOR_TYPE _sensor)
     out_arr[IMU_Y] = (data[3] << 8) | data[2];
     out_arr[IMU_Z] = (data[1] << 8) | data[0];
 
-    for (size_t i = 0; i < 3; i++)
-    {
-        out_arr[i] = Wire.read() << 8 | Wire.read();
-    }
-
     return true;
 }
 
