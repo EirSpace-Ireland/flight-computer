@@ -66,13 +66,7 @@ public:
 
 public:
 // interface
-    bool init() override;
     bool offset_calibration(const uint16_t num_iterations) override;
-    bool read_accel_axis(IMU_AXIS _axis) override;
-    bool read_accel() override;
-    bool read_gyro_axis(IMU_AXIS _axis) override;
-    bool read_gyro() override;
-    bool read_all() override;
 
     float get_acc_x() override { return (accel_raw[IMU_X]-accel_offset[IMU_X]) / accel_conv; };
     float get_acc_y() override { return (accel_raw[IMU_Y]-accel_offset[IMU_Y]) / accel_conv; };
