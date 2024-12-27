@@ -35,14 +35,7 @@ bool mpu6050::init()
 
     // Serial.print(F("WHOAMI: "));
     // Serial.println(res, HEX);
-
-    // todo extract
-    // Reset MPU
-    if (!write_register(REG_PWR_MGMT_1, (1 << 7)))
-    {
-        return false;
-    }
-    delay(100);
+    mpu6050::reset();
 
     // Turn on MPU
     if (!write_register(REG_PWR_MGMT_1, 0))
@@ -50,6 +43,17 @@ bool mpu6050::init()
         return false;
     }
 
+    return true;
+}
+
+bool mpu6050::reset()
+{
+    if (!write_register(REG_PWR_MGMT_1, (1 << 7))) // Device reset bit
+    {
+        return false;
+    }
+
+    delay(100); // As per register map pg 42
     return true;
 }
 

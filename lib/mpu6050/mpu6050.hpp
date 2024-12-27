@@ -54,6 +54,7 @@ public:
     /// @brief Wake up the sensor and set default ranges (+-2G, +-250deg/s)
     /// @return True if successful otherwise false
     bool init();
+    bool reset();
     void calibrate();
 
     bool read_accel_axis(uint8_t _axis);
