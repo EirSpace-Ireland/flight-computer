@@ -4,13 +4,32 @@
 // I2C addresses
 #define MPU_ADDR_0 0x68
 
+// Conversion factors
+#define ACCEL_CONV_2G 16384.0f
+#define ACCEL_CONV_4G 8192.0f
+#define ACCEL_CONV_8G 4096.0f
+#define ACCEL_CONV_16G 2048.0f
+
+#define GYRO_CONV_250 131.0f
+#define GYRO_CONV_500 65.5f
+#define GYRO_CONV_1000 32.8f
+#define GYRO_CONV_2000 16.4f
+
 mpu6050::mpu6050()
-    : addr{MPU_ADDR_0}
+    : addr{MPU_ADDR_0},
+      accel_scale_factors{ACCEL_CONV_2G, ACCEL_CONV_4G, ACCEL_CONV_8G, ACCEL_CONV_16G},
+      gyro_scale_factors{GYRO_CONV_250, GYRO_CONV_500, GYRO_CONV_1000, GYRO_CONV_2000},
+      accel_conv{ACCEL_CONV_2G},
+      gyro_conv{GYRO_CONV_250}
 {
 }
 
 mpu6050::mpu6050(bool _addr_0)
-    : addr{MPU_ADDR_0 | _addr_0}
+    : addr{MPU_ADDR_0 | _addr_0},
+      accel_scale_factors{ACCEL_CONV_2G, ACCEL_CONV_4G, ACCEL_CONV_8G, ACCEL_CONV_16G},
+      gyro_scale_factors{GYRO_CONV_250, GYRO_CONV_500, GYRO_CONV_1000, GYRO_CONV_2000},
+      accel_conv{ACCEL_CONV_2G},
+      gyro_conv{GYRO_CONV_250}
 {
 }
 
@@ -81,7 +100,7 @@ bool mpu6050::read_sensor_axis(SENSOR_TYPE _sensor, IMU_AXIS _axis)
     // Accelerometer and gyro registers have the same layout but are offset by 8
     // in the register map. The output array is also different
     sensor_reg_offset = (_sensor == ACCEL) ? 0 : 8;
-    out_arr = (_sensor == ACCEL) ? accel : gyro;
+    out_arr = (_sensor == ACCEL) ? accel_raw : gyro_raw;
 
     switch (_axis)
     {
@@ -123,12 +142,12 @@ bool mpu6050::read_sensor(SENSOR_TYPE _sensor)
     if (_sensor == ACCEL)
     {
         read_reg = REG_ACCEL_XOUT_H;
-        out_arr = accel;
+        out_arr = accel_raw;
     }
     else
     {
         read_reg = REG_GYRO_XOUT_H;
-        out_arr = gyro;
+        out_arr = gyro_raw;
     }
 
     uint8_t data[6]{0};
@@ -254,10 +273,12 @@ bool mpu6050::write_sensor_scale(SENSOR_TYPE _sensor, IMU_SCALE _scale)
     if (_sensor == ACCEL)
     {
         reg_ptr = REG_ACCEL_CONFIG;
+        accel_conv = accel_scale_factors[_scale];
     }
     else
     {
         reg_ptr = REG_GYRO_CONFIG;
+        gyro_conv = gyro_scale_factors[_scale];
     }
 
     if (!read_register_data8(reg_ptr, &reg_state))
@@ -290,4 +311,38 @@ bool mpu6050::write_gyro_scale(IMU_SCALE _scale)
 bool mpu6050::write_dlpf_bw()
 {
     return false;
+}
+
+bool mpu6050::offset_calibration(const uint16_t num_iterations)
+{
+    int32_t accl_accum_x = 0;
+    int32_t accl_accum_y = 0;
+    int32_t accl_accum_z = 0;
+    int32_t gyro_accum_x = 0;
+    int32_t gyro_accum_y = 0;
+    int32_t gyro_accum_z = 0;
+
+    // accum num_iterations values for each axis
+    for (size_t i = 0; i < num_iterations; i++)
+    {
+        this->read_all();
+
+        accl_accum_x += this->get_acc_x_raw();
+        accl_accum_y += this->get_acc_y_raw();
+        accl_accum_z += this->get_acc_z_raw();
+        gyro_accum_x += this->get_gyro_x_raw();
+        gyro_accum_y += this->get_gyro_y_raw();
+        gyro_accum_z += this->get_gyro_z_raw();
+    }
+
+    // get average
+    // store in offset valiables
+    accel_offset[IMU_X] = accl_accum_x / num_iterations;
+    accel_offset[IMU_Y] = accl_accum_y / num_iterations;
+    accel_offset[IMU_Z] = (accl_accum_z / num_iterations) - accel_conv;
+    gyro_offset[IMU_X] = gyro_accum_x / num_iterations;
+    gyro_offset[IMU_Y] = gyro_accum_y / num_iterations;
+    gyro_offset[IMU_Z] = gyro_accum_z / num_iterations;
+
+    return true;
 }

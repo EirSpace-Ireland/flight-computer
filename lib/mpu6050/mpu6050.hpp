@@ -14,16 +14,21 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include "IMU.hpp"
 
-class mpu6050
+class mpu6050 : public IMU
 {
 private:
-    int16_t accel[3];
-    int16_t gyro[3];
+    int16_t accel_raw[3];
+    int16_t gyro_raw[3];
     int16_t temp;
-    int32_t accel_calib[3];
-    int32_t gyro_calib[3];
     const uint8_t addr;
+
+    const float accel_scale_factors[4];
+    const float gyro_scale_factors[4];
+
+    float accel_conv;
+    float gyro_conv;
 
     enum SENSOR_TYPE
     {
@@ -32,13 +37,6 @@ private:
     };
 
 public:
-    enum IMU_AXIS : uint8_t
-    {
-        IMU_X = 0,
-        IMU_Y,
-        IMU_Z
-    };
-
     enum IMU_SCALE : uint8_t
     {
         ACCEL_2G = 0,
@@ -63,34 +61,49 @@ public:
     };
 
 public:
+// interface
+    bool init() override;
+    bool offset_calibration(const uint16_t num_iterations) override;
+    bool read_accel_axis(IMU_AXIS _axis) override;
+    bool read_accel() override;
+    bool read_gyro_axis(IMU_AXIS _axis) override;
+    bool read_gyro() override;
+    bool read_all() override;
+
+    float get_acc_x() override { return (accel_raw[IMU_X]-accel_offset[IMU_X]) / accel_conv; };
+    float get_acc_y() override { return (accel_raw[IMU_Y]-accel_offset[IMU_Y]) / accel_conv; };
+    float get_acc_z() override { return (accel_raw[IMU_Z]-accel_offset[IMU_Z]) / accel_conv; };
+
+    float get_gyro_x() override { return (gyro_raw[IMU_X]-gyro_offset[IMU_X]) / gyro_conv; };
+    float get_gyro_y() override { return (gyro_raw[IMU_Y]-gyro_offset[IMU_Y]) / gyro_conv; };
+    float get_gyro_z() override { return (gyro_raw[IMU_Z]-gyro_offset[IMU_Z]) / gyro_conv; };
+
+public:
+// specific to mpu6050
     mpu6050(bool _addr_0);
     mpu6050();
     ~mpu6050();
 
     /// @brief Wake up the sensor and set default ranges (+-2G, +-250deg/s)
     /// @return True if successful otherwise false
-    bool init();
     bool reset();
 
-    bool read_accel_axis(IMU_AXIS _axis);
-    bool read_accel();
-    bool read_gyro_axis(IMU_AXIS _axis);
-    bool read_gyro();
     bool read_temp();
     bool read_motion();
-    bool read_all();
 
     bool write_accel_scale(IMU_SCALE _scale);
     bool write_gyro_scale(IMU_SCALE _scale);
     bool write_dlpf_bw();
 
-    int16_t get_acc_x() { return accel[IMU_X]; }
-    int16_t get_acc_y() { return accel[IMU_Y]; }
-    int16_t get_acc_z() { return accel[IMU_Z]; }
-    int16_t get_gyro_x() { return gyro[IMU_X]; }
-    int16_t get_gyro_y() { return gyro[IMU_Y]; }
-    int16_t get_gyro_z() { return gyro[IMU_Z]; }
     int16_t get_temp() { return temp; };
+
+    int16_t get_acc_x_raw() { return accel_raw[IMU_X]; }
+    int16_t get_acc_y_raw() { return accel_raw[IMU_Y]; }
+    int16_t get_acc_z_raw() { return accel_raw[IMU_Z]; }
+
+    int16_t get_gyro_x_raw() { return gyro_raw[IMU_X]; }
+    int16_t get_gyro_y_raw() { return gyro_raw[IMU_Y]; }
+    int16_t get_gyro_z_raw() { return gyro_raw[IMU_Z]; }
 
 private:
     bool write_sensor_scale(SENSOR_TYPE _sensor, IMU_SCALE _scale);
