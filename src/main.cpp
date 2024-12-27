@@ -1,16 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <mpu6050.hpp>
-struct RocetState
-{
-  int val;
-};
 
-
-
-
-
-RocetState RS;
 mpu6050 imu;
 char buff[50];
 
@@ -19,85 +10,155 @@ unsigned long logTime = 0;
 int scale = 0;
 float conv = 131;
 float accel_conv = 16384;
+unsigned long imu_timer;
+
+int32_t accel_offset_x;
+int32_t accel_offset_y;
+int32_t accel_offset_z;
+
+int32_t gyro_offset_x;
+int32_t gyro_offset_y;
+int32_t gyro_offset_z;
+
+enum FlightState {
+  INIT,
+  IDLE,
+  ACCELERATING,
+  COASTING,
+  DECENDING,
+  LANDED,
+  INVALID_STATE
+};
+
+FlightState state = INVALID_STATE;
+
+void calibrate_imu(mpu6050* _imu);
 
 void setup()
 {
-  Serial.begin(19200);
+  // Init peripherals
+  while(!Serial); // Wait for USB port to be ready
+  Serial.begin(115200);
   Wire.setClock(400000);
-  Wire.begin(); // Initialize comunication
-  if (!imu.init())
+  Wire.begin();
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  // Blink 3 times (1Hz)
+  for (size_t i = 0; i < 3; i++)
   {
-    Serial.println("IMU INIT FAILED");
-    Serial.println("entering while(1) loop");
-    while(1);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(200);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(200);
   }
-  Serial.println("IMU INIT SUCCESS");
+
   logTime = prevTime = millis();
+  state = INIT;
+  imu_timer = 0;
 }
 
-void loop()
-{
-  imu.read_all();
+void loop(){
+  static bool led_state;
 
-  if (millis() - logTime > 100)
+  switch (state)
   {
-    Serial.print("deg: ");
-    Serial.println(imu.get_gyro_x()/conv);
+    case INIT:
+      Serial.println("Entered INIT state");
+      // init and check hardware
+        // Sensors are awake and presenst
+        // Pyro channels have continuity if configured like that
+      // calibrate sensors
+      // calibrate_imu()
+      // Activate state indcators
+      // Test and observe actuators
+      state = IDLE;
+    break;
 
-    Serial.print("accel: ");
-    Serial.println(imu.get_acc_x()/accel_conv);
+    case IDLE:
+      Serial.println("Entered IDLE state");
+      //Serial.println("Entered IDLE state");
+      /**
+       * - LEDs and Buzzer
+       * - Log slowly
+       * - Wait for liftoff
+       */
 
-    Serial.print("temp: ");
-    Serial.println((imu.get_temp()/340.0f) +36.53);
+      // log every 100ms
+    break;
 
-    Serial.println();
+    case ACCELERATING:
+      Serial.println("Entered ACCELERATING state");
+      /**
+       * - Log quickly
+       * - Wait for MEC
+       */
+    break;
 
-    logTime = millis();
+    case COASTING:
+      Serial.println("Entered COASTING state");
+      /**
+       * - Wait for apogee
+       *
+       */
+    break;
+
+    case DECENDING:
+      Serial.println("Entered DECENDING state");
+      /**
+       * - Arm main chute pyro
+       * - Look out for main chute deploy
+       *
+       */
+    break;
+
+    case LANDED:
+      Serial.println("Entered LANDED state");
+      /**
+       * - Dump flash to SD
+       * - Disarm pyro
+       * - Beep loudly
+       * - Disable logging
+       *
+       */
+    break;
+
+  default:
+    Serial.println("Invalid state!!!");
+    break;
   }
 
-  if (millis() - prevTime > 2000)
+}
+
+void calibrate_imu(mpu6050* _imu){
+  int32_t accl_accum_x = 0;
+  int32_t accl_accum_y = 0;
+  int32_t accl_accum_z = 0;
+
+  int32_t gyro_accum_x = 0;
+  int32_t gyro_accum_y = 0;
+  int32_t gyro_accum_z = 0;
+
+  // accum 1000 values for each axis
+  for (size_t i = 0; i < 1000; i++)
   {
-    Serial.println("Scale update");
-    scale++;
-    if (scale > 3)
-    {
-      scale = 0;
-    }
+    _imu->read_all();
 
-    switch (scale)
-    {
-    case 0:
-      imu.write_accel_scale(mpu6050::ACCEL_2G);
-      imu.write_gyro_scale(mpu6050::GYRO_250);
-      accel_conv = 16384;
-      conv = 131;
-      break;
+    accl_accum_x += _imu->get_acc_x();
+    accl_accum_y += _imu->get_acc_y();
+    accl_accum_z += _imu->get_acc_z();
 
-    case 1:
-      imu.write_accel_scale(mpu6050::ACCEL_4G);
-      imu.write_gyro_scale(mpu6050::GYRO_500);
-      accel_conv = 8192;
-      conv = 65.5;
-      break;
-
-    case 2:
-      imu.write_accel_scale(mpu6050::ACCEL_8G);
-      imu.write_gyro_scale(mpu6050::GYRO_1000);
-      accel_conv = 4096;
-      conv = 32.8;
-      break;
-
-    case 3:
-      imu.write_accel_scale(mpu6050::ACCEL_16G);
-      imu.write_gyro_scale(mpu6050::GYRO_2000);
-      accel_conv = 2048;
-      conv = 16.4;
-      break;
-
-    default:
-      break;
-    }
-    prevTime = millis();
+    gyro_accum_x += _imu->get_gyro_x();
+    gyro_accum_y += _imu->get_gyro_y();
+    gyro_accum_z += _imu->get_gyro_z();
   }
 
+  // get average
+  // store in offset valiables
+  accel_offset_x = accl_accum_x/1000;
+  accel_offset_y = accl_accum_x/1000;
+  accel_offset_z = accl_accum_x/1000;
+
+  gyro_offset_x = gyro_accum_x/1000;
+  gyro_offset_y = gyro_accum_y/1000;
+  gyro_offset_z = gyro_accum_z/1000;
 }
