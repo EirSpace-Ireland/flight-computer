@@ -1,4 +1,4 @@
-#ifndef EIR_MPU6051_REG
+#ifndef EIR_MPU6050_REG
 #define EIR_MPU6050_REG
 
 // REGISTER DEFINITIONS
@@ -121,4 +121,4 @@
 #define REG_FIFO_R_W 116           // Reg 116
 #define REG_WHO_AM_I 117           // Reg 117
 
-#endif // EIR_MPU6051_REG
+#endif // EIR_MPU6050_REG
