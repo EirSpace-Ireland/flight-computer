@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <mpu6050.hpp>
+#include <SerialFileLogger.hpp>
 
 enum FlightState
 {
@@ -44,14 +45,12 @@ int32_t gyro_offset_z;
 
 // Objects
 mpu6050 imu;
+SerialFileLogger* logger;
 
 void setup()
 {
   // Init peripherals
-  while (!Serial)
-    ; // Wait for USB port to be ready
-  Serial.begin(115200);
-  Wire.begin();
+  logger = Logger<SerialFileLogger>::get_logger();
   Wire.setClock(400000);
   pinMode(LED_BUILTIN, OUTPUT);
 
