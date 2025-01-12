@@ -65,9 +65,9 @@ public:
     };
 
 public:
-// interface
     bool init() override;
     bool offset_calibration(const uint16_t num_iterations) override;
+
     bool read_accel_axis(IMU_AXIS _axis) override;
     bool read_accel() override;
     bool read_gyro_axis(IMU_AXIS _axis) override;
@@ -88,92 +88,21 @@ public:
     mpu6050();
     ~mpu6050();
 
-    /**
-     * @brief Verify connection to MPU6050 and wake from sleep mode
-     *
-     * @return True on success, false on failure
-     */
-    bool init();
-
-    /**
-     * @brief Reset the MPU6050
-     *
-     * @return True on success, false on failure
-     */
+    //bool init();
     bool reset();
 
-    /**
-     * @brief Read a specific accelerometer axis
-     *
-     * @param _axis The axis to read
-     * @return True on success, false on failure
-     */
-    bool read_accel_axis(IMU_AXIS _axis);
+    //bool read_accel_axis(IMU_AXIS _axis);
+    //bool read_accel();
+    //bool read_gyro_axis(IMU_AXIS _axis);
+    //bool read_gyro();
 
-    /**
-     * @brief Read all accelerometer axes
-     *
-     * @return True on success, false on failure
-     */
-    bool read_accel();
-
-    /**
-     * @brief Read a specific gyroscope axis
-     *
-     * @param _axis The axis to read
-     * @return True on success, false on failure
-     */
-    bool read_gyro_axis(IMU_AXIS _axis);
-
-    /**
-     * @brief Read all gyroscope axes
-     *
-     * @return True on success, false on failure
-     */
-    bool read_gyro();
-
-    /**
-     * @brief Read temperature
-     *
-     * @return True on success, false on failure
-     */
     bool read_temp();
-
-    /**
-     * @brief Read all motion data
-     *
-     * @return True on success, false on failure
-     */
     bool read_motion();
+    //bool read_all();
 
-    /**
-     * @brief Read all sensor data
-     *
-     * @return True on success, false on failure
-     */
-    bool read_all();
-
-    /**
-     * @brief Set the full scale range for the accelerometer
-     *
-     * @return True on success, false on failure
-     */
     bool write_accel_scale(IMU_SCALE _scale);
-
-    /**
-     * @brief Set the full scale range for the gyroscope
-     *
-     * @return True on success, false on failure
-     */
     bool write_gyro_scale(IMU_SCALE _scale);
-
-    /**
-     * @brief Set the digital low pass filter bandwidth
-     *
-     * @return True on success, false on failure
-     */
     bool write_dlpf_bw();
-
     int16_t get_temp() { return temp; };
 
     int16_t get_acc_x_raw() { return accel_raw[IMU_X]; }

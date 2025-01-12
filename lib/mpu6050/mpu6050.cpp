@@ -25,7 +25,7 @@ mpu6050::mpu6050()
 }
 
 mpu6050::mpu6050(bool _addr_0)
-    : addr{MPU_ADDR_0 | _addr_0},
+    : addr{(uint8_t)MPU_ADDR_0 | _addr_0},
       accel_scale_factors{ACCEL_CONV_2G, ACCEL_CONV_4G, ACCEL_CONV_8G, ACCEL_CONV_16G},
       gyro_scale_factors{GYRO_CONV_250, GYRO_CONV_500, GYRO_CONV_1000, GYRO_CONV_2000},
       accel_conv{ACCEL_CONV_2G},
@@ -37,6 +37,11 @@ mpu6050::~mpu6050()
 {
 }
 
+/**
+ * @brief Verify connection to MPU6050 and wake from sleep mode
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::init()
 {
     // Validate whoami register
@@ -66,6 +71,11 @@ bool mpu6050::init()
     return true;
 }
 
+/**
+ * @brief Reset the MPU6050
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::reset()
 {
     if (!write_register(REG_PWR_MGMT_1, (1 << 7))) // Device reset bit
@@ -76,16 +86,32 @@ bool mpu6050::reset()
     return true;
 }
 
+/**
+ * @brief Read a specific accelerometer axis
+ *
+ * @param _axis The axis to read
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_accel_axis(IMU_AXIS _axis)
 {
     return read_sensor_axis(ACCEL, _axis);
 }
 
+/**
+ * @brief Read all accelerometer axes
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_accel()
 {
     return read_sensor(ACCEL);
 }
 
+/**
+ * @brief Read all gyroscope axes
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_gyro()
 {
     return read_sensor(GYRO);
@@ -130,6 +156,12 @@ bool mpu6050::read_sensor_axis(SENSOR_TYPE _sensor, IMU_AXIS _axis)
     return true;
 }
 
+/**
+ * @brief Read a specific gyroscope axis
+ *
+ * @param _axis The axis to read
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_gyro_axis(IMU_AXIS _axis)
 {
     return read_sensor_axis(GYRO, _axis);
@@ -237,6 +269,11 @@ bool mpu6050::read_register_data32(uint8_t _reg, uint32_t *_data)
     return mpu6050::read(_reg, reinterpret_cast<uint8_t *>(_data), sizeof(uint32_t));
 }
 
+/**
+ * @brief Read temperature
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_temp()
 {
     if (!read_register_data16(REG_TEMP_OUT_H, reinterpret_cast<uint16_t *>(&temp)))
@@ -247,6 +284,11 @@ bool mpu6050::read_temp()
     return true;
 }
 
+/**
+ * @brief Read all motion data
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_motion()
 {
     if (read_accel() == false || read_gyro() == false)
@@ -256,6 +298,11 @@ bool mpu6050::read_motion()
     return true;
 }
 
+/**
+ * @brief Read all sensor data
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::read_all()
 {
     if (read_accel() == false || read_gyro() == false || read_temp() == false)
@@ -298,16 +345,31 @@ bool mpu6050::write_sensor_scale(SENSOR_TYPE _sensor, IMU_SCALE _scale)
     return true;
 }
 
+/**
+ * @brief Set the full scale range for the accelerometer
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::write_accel_scale(IMU_SCALE _scale)
 {
     return write_sensor_scale(ACCEL, _scale);
 }
 
+/**
+ * @brief Set the full scale range for the gyroscope
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::write_gyro_scale(IMU_SCALE _scale)
 {
     return write_sensor_scale(GYRO, _scale);
 }
 
+/**
+ * @brief Set the digital low pass filter bandwidth
+ *
+ * @return True on success, false on failure
+ */
 bool mpu6050::write_dlpf_bw()
 {
     return false;
